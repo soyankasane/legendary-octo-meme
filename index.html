@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bikeable Kenya Data Initiative</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .dashboard-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            border: 1px solid #e5e7eb;
+            transition: all 0.2s ease-in-out;
+        }
+        .dashboard-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.08); }
+        .tab-button.active {
+            background-color: #2563eb;
+            color: white;
+        }
+        .leaflet-container { border-radius: 12px; }
+    </style>
+</head>
+<body class="bg-gray-50">
+
+    <div id="app-container" class="max-w-7xl mx-auto p-4 md:p-6 lg:p-8">
+
+        <!-- Login View -->
+        <div id="login-view">
+            <div class="text-center py-16">
+                <div class="flex justify-center items-center mb-4">
+                    <svg class="h-12 w-12 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01M12 6v-1.5M12 6h-1.5M12 6h1.5m-1.5 12v1.5M12 18h-1.5M12 18h1.5m-1.5-2.01V16m0-8v-1.5m0 9.5v1.5m-2.599-7.5A1.99 1.99 0 009.4 10c0 1.105.895 2 2 2s2-.895 2-2c0-.528-.21-1.004-.546-1.353" />
+                    </svg>
+                </div>
+                <h1 class="text-4xl md:text-5xl font-extrabold text-gray-900 tracking-tight">Bikeable Kenya Data Initiative</h1>
+                <p class="mt-4 max-w-2xl mx-auto text-lg text-gray-600">Help build a safer, more bike-friendly Kenya. Share your ride data anonymously and earn rewards.</p>
+                <div class="mt-8">
+                    <button id="connect-strava-btn" class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-200 flex items-center mx-auto text-lg">
+                        <svg class="w-6 h-6 mr-3" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L12.258 24l2.053-4.116-2.19-4.298zM8.291 0l-2.67 5.258h5.334L8.291 0z"/></svg>
+                        Connect with Strava to Join
+                    </button>
+                </div>
+                 <div class="mt-8 max-w-3xl mx-auto bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg text-left">
+                    <h3 class="text-md font-semibold text-blue-800">Your Privacy is Our Priority</h3>
+                    <p class="text-sm text-blue-700 mt-1">We will never share your personal information. All contributed data is anonymized and aggregated to identify cycling trends. Your individual routes remain private.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Dashboard View -->
+        <div id="dashboard-view" class="hidden">
+            <!-- Header -->
+            <header class="flex flex-wrap justify-between items-center mb-6">
+                <div class="flex items-center">
+                    <svg class="h-10 w-10 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01M12 6v-1.5M12 6h-1.5M12 6h1.5m-1.5 12v1.5M12 18h-1.5M12 18h1.5m-1.5-2.01V16m0-8v-1.5m0 9.5v1.5m-2.599-7.5A1.99 1.99 0 009.4 10c0 1.105.895 2 2 2s2-.895 2-2c0-.528-.21-1.004-.546-1.353" /></svg>
+                    <h1 class="text-3xl font-bold text-gray-900 ml-3">Data Initiative Dashboard</h1>
+                </div>
+                <div id="user-profile" class="flex items-center mt-4 sm:mt-0">
+                    <img id="user-avatar" src="https://placehold.co/40x40/E2E8F0/4A5568?text=U" class="w-10 h-10 rounded-full mr-3 border-2 border-white shadow">
+                    <div>
+                        <p class="font-semibold text-gray-800" id="user-name">Your Name</p>
+                        <p class="text-sm text-gray-500">Strava Connected</p>
+                    </div>
+                </div>
+            </header>
+
+            <!-- User Contribution & Rewards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <div class="dashboard-card p-5">
+                    <h3 class="text-gray-500 font-semibold">Your Contribution</h3>
+                    <p class="text-3xl font-bold text-gray-900 mt-2">1,204 km</p>
+                    <p class="text-gray-500">across 58 rides</p>
+                </div>
+                <div class="dashboard-card p-5">
+                    <h3 class="text-gray-500 font-semibold">Reward Points</h3>
+                    <p class="text-3xl font-bold text-green-600 mt-2">1,204 Pts</p>
+                    <p class="text-gray-500">1 km = 1 point</p>
+                </div>
+                <div class="dashboard-card p-5 flex flex-col justify-center">
+                    <button class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg shadow-md transition duration-200">Redeem at Bikeable Kenya</button>
+                </div>
+            </div>
+
+            <!-- Analytics Section -->
+            <div class="dashboard-card p-5">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-900">Community Cycling Insights</h2>
+                        <p class="text-gray-600">Aggregated and anonymized data from all contributors.</p>
+                    </div>
+                    <div id="report-filters" class="flex-shrink-0 bg-gray-100 p-1 rounded-lg space-x-1 mt-4 md:mt-0">
+                        <button data-period="day" class="tab-button px-3 py-1.5 text-sm font-medium rounded-md text-gray-600 transition">Daily</button>
+                        <button data-period="week" class="tab-button active px-3 py-1.5 text-sm font-medium rounded-md transition">Weekly</button>
+                        <button data-period="month" class="tab-button px-3 py-1.5 text-sm font-medium rounded-md transition">Monthly</button>
+                        <button data-period="year" class="tab-button px-3 py-1.5 text-sm font-medium rounded-md transition">Annual</button>
+                    </div>
+                </div>
+
+                <!-- Map and Stats -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-2 h-96 md:h-[500px] w-full">
+                        <div id="heatmap" class="h-full w-full bg-gray-200"></div>
+                    </div>
+                    <div class="flex flex-col gap-4">
+                         <div class="bg-gray-100 p-4 rounded-lg">
+                            <h4 class="text-gray-500 font-semibold text-sm">Total Distance Tracked</h4>
+                            <p class="text-2xl font-bold text-gray-900" id="total-distance">45,102 km</p>
+                        </div>
+                         <div class="bg-gray-100 p-4 rounded-lg">
+                            <h4 class="text-gray-500 font-semibold text-sm">Busiest Time</h4>
+                            <p class="text-2xl font-bold text-gray-900" id="busiest-time">7-9 AM, Weekdays</p>
+                        </div>
+                        <div class="bg-gray-100 p-4 rounded-lg h-full">
+                            <h4 class="text-gray-500 font-semibold text-sm mb-2">Ride Volume</h4>
+                            <canvas id="ride-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- STATE MANAGEMENT ---
+        let map, heatLayer, rideChart;
+        let mockData = [];
+
+        // --- UI ELEMENTS ---
+        const loginView = document.getElementById('login-view');
+        const dashboardView = document.getElementById('dashboard-view');
+        const connectStravaBtn = document.getElementById('connect-strava-btn');
+        const reportFilters = document.getElementById('report-filters');
+
+        // --- MOCK DATA GENERATION ---
+        // Generate realistic-looking GPS tracks around Nairobi
+        function generateMockData() {
+            const nairobi = { lat: -1.286389, lng: 36.817223 };
+            const points = [];
+            // Route 1: Commute like route
+            for (let i = 0; i < 100; i++) {
+                points.push([nairobi.lat + (Math.random() - 0.5) * 0.1, nairobi.lng + (Math.random() - 0.5) * 0.1, Math.random()]);
+            }
+            // Route 2: Karura Forest area
+            for (let i = 0; i < 150; i++) {
+                points.push([-1.2384 + (Math.random() - 0.5) * 0.02, 36.8085 + (Math.random() - 0.5) * 0.02, Math.random() * 2]);
+            }
+            // Route 3: Southern Bypass area
+            for (let i = 0; i < 200; i++) {
+                points.push([-1.3392 + (Math.random() - 0.8) * 0.05, 36.7580 + Math.random() * 0.1, Math.random()]);
+            }
+             // Route 4: Ngong Hills area
+            for (let i = 0; i < 250; i++) {
+                points.push([-1.4167 + (Math.random() - 0.5) * 0.08, 36.6500 + (Math.random() - 0.5) * 0.08, Math.random() * 1.5]);
+            }
+            return points;
+        }
+        mockData = generateMockData();
+
+        // --- INITIALIZATION FUNCTIONS ---
+        function initializeMap() {
+            if (map) return;
+            map = L.map('heatmap').setView([-1.286389, 36.817223], 12);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            }).addTo(map);
+            heatLayer = L.heatLayer(mockData, { radius: 20, blur: 25, maxZoom: 14 }).addTo(map);
+        }
+
+        function initializeChart() {
+            if (rideChart) rideChart.destroy();
+            const ctx = document.getElementById('ride-chart').getContext('2d');
+            rideChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    datasets: [{
+                        label: 'Rides this Week',
+                        data: [65, 59, 80, 81, 56, 55, 40],
+                        fill: true,
+                        backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                        borderColor: 'rgba(37, 99, 235, 1)',
+                        tension: 0.3,
+                        pointRadius: 0,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { display: false }, grid: { display: false } },
+                        x: { ticks: { font: { size: 10 } }, grid: { display: false } }
+                    }
+                }
+            });
+        }
+        
+        // --- EVENT HANDLERS ---
+        function handleStravaConnect() {
+            // Simulate API call and login
+            connectStravaBtn.textContent = 'Connecting...';
+            connectStravaBtn.disabled = true;
+            
+            setTimeout(() => {
+                // Mock user data
+                document.getElementById('user-name').textContent = 'John Doe';
+                document.getElementById('user-avatar').src = 'https://placehold.co/40x40/3B82F6/FFFFFF?text=JD';
+
+                loginView.classList.add('hidden');
+                dashboardView.classList.remove('hidden');
+
+                // Initialize visualizations after view is visible
+                initializeMap();
+                initializeChart();
+            }, 1500);
+        }
+
+        function handleFilterChange(e) {
+            if (!e.target.matches('.tab-button')) return;
+
+            // Update UI
+            reportFilters.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            e.target.classList.add('active');
+
+            // Simulate data change
+            const period = e.target.dataset.period;
+            const randomFactor = Math.random() + 0.5;
+            const newTotalDistance = (45102 * randomFactor).toFixed(0);
+            
+            document.getElementById('total-distance').textContent = `${newTotalDistance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")} km`;
+
+            // Update heatmap intensity
+            heatLayer.setOptions({ max: 0.5 * randomFactor });
+
+            // Update chart data
+            const newData = rideChart.data.datasets[0].data.map(d => d * randomFactor);
+            rideChart.data.datasets[0].data = newData;
+            rideChart.update();
+        }
+
+        // --- ATTACH EVENT LISTENERS ---
+        connectStravaBtn.addEventListener('click', handleStravaConnect);
+        reportFilters.addEventListener('click', handleFilterChange);
+    });
+    </script>
+</body>
+</html>
